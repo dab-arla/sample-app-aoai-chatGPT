@@ -41,12 +41,12 @@ class _UiSettings(BaseSettings):
         env_ignore_empty=True
     )
 
-    title: str = "Contoso"
+    title: str = "KundenKenner"
     logo: Optional[str] = None
-    chat_logo: Optional[str] = None
+    chat_logo: Optional[str] = "static/assets/draus_chat_logo.jpg"
     chat_title: str = "Start chatting"
     chat_description: str = "This chatbot is configured to answer your questions"
-    favicon: str = "/favicon.ico"
+    favicon: str = "/static/favicon.ico"
     show_share_button: bool = True
 
 
