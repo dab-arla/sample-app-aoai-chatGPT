@@ -43,7 +43,7 @@ class _UiSettings(BaseSettings):
 
     title: str = "KundenKenner"
     logo: Optional[str] = None
-    chat_logo: Optional[str] = "static/assets/draus_chat_logo.jpg"
+    chat_logo: Optional[str] = "static/assets/draus_logo_chat.jpg"
     chat_title: str = "Start chatting"
     chat_description: str = "This chatbot is configured to answer your questions"
     favicon: str = "/static/favicon.ico"
