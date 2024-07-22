@@ -5,7 +5,7 @@ import { CopyRegular } from '@fluentui/react-icons'
 
 import { CosmosDBStatus } from '../../api'
 //import Contoso from '../../assets/Contoso.svg'
-import DrAusbüttel from '../../assets/DrAusbüttel.jpg'
+import DrAusbüttel from '../../assets/DrAusbüttel.svg'
 import { HistoryButton, ShareButton } from '../../components/common/Button'
 import { AppStateContext } from '../../state/AppProvider'
 
