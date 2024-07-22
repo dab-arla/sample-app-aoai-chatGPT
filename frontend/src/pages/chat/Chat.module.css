@@ -20,11 +20,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: radial-gradient(108.78% 108.78% at 50.02% 19.78%, #ffffff 57.29%, #eef6fe 100%);
-  box-shadow:
+  /*background: radial-gradient(108.78% 108.78% at 50.02% 19.78%, #ffffff 57.29%, #eef6fe 100%);*/
+  background: #ffffff; /* Simplified background color */
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); /* Softer shadow for a modern look */
+  border-radius: 12px; /* Increased border-radius for a more rounded look */
+  /*box-shadow:
     0px 2px 4px rgba(0, 0, 0, 0.14),
     0px 0px 2px rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
+  border-radius: 8px;*/
   overflow-y: auto;
   max-height: calc(100vh - 100px);
 }
@@ -45,7 +48,7 @@
   align-items: flex-end;
   text-align: center;
   letter-spacing: 0.05em;
-  line-height: 1.3; 
+  line-height: 1.4; 
   margin-top: 36px;
   margin-bottom: 10px;
   color: #333333;
@@ -56,7 +59,7 @@
   font-style: normal;
   font-weight: 400;
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.6;
   align-items: flex-end;
   text-align: center;
   letter-spacing: 0.02em;
@@ -90,11 +93,12 @@
 .chatMessageUserMessage {
   display: flex;
   padding: 20px;
-  background: #edf5fd;
+  background: rgba(186, 0, 32, 0.12); /* Adjusted background color with 70% opacity */
   border-radius: 8px;
-  box-shadow:
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1); /* Softer shadow */
+  /*box-shadow:
     0px 2px 4px rgba(0, 0, 0, 0.14),
-    0px 0px 2px rgba(0, 0, 0, 0.12);
+    0px 0px 2px rgba(0, 0, 0, 0.12);*/
   font-style: normal;
   font-weight: 400;
   font-size: 14px;
@@ -128,7 +132,7 @@
 }
 
 .chatMessageErrorContent {
-  font-family: 'Roboto';
+  font-family: 'Segoe UI';
   font-style: normal;
   font-weight: 400;
   font-size: 14px;
@@ -349,7 +353,7 @@ a {
   font-weight: 600;
   font-size: 12px;
   line-height: 16px;
-  color: #115ea3;
+  color: #ba0020;
   flex-direction: row;
   align-items: center;
   padding: 4px 6px;
