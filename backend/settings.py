@@ -75,9 +75,9 @@ class _UiSettings(BaseSettings):
         env_ignore_empty=True
     )
 
-    title: str = "KundenKenner"
+    title: str = "MedWis"
     logo: Optional[str] = None
-    chat_logo: Optional[str] = "static/assets/draus_logo_chat.svg"
+    chat_logo: Optional[str] = "" # "static/assets/draus_logo_chat.svg"
     chat_title: str = "Start chatting"
     chat_description: str = "This chatbot is configured to answer your questions"
     favicon: str = "/static/favicon.ico"
