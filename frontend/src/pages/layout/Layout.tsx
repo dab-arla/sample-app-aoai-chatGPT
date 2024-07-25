@@ -16,8 +16,8 @@ const Layout = () => {
   const [copyClicked, setCopyClicked] = useState<boolean>(false)
   const [copyText, setCopyText] = useState<string>('Copy URL')
   const [shareLabel, setShareLabel] = useState<string | undefined>('Share')
-  const [hideHistoryLabel, setHideHistoryLabel] = useState<string>('Hide chat history')
-  const [showHistoryLabel, setShowHistoryLabel] = useState<string>('Show chat history')
+  const [hideHistoryLabel, setHideHistoryLabel] = useState<string>('Chatverlauf ausblenden')
+  const [showHistoryLabel, setShowHistoryLabel] = useState<string>('Chatverlauf anzeigen')
   const appStateContext = useContext(AppStateContext)
   const ui = appStateContext?.state.frontendSettings?.ui
 
@@ -56,8 +56,8 @@ const Layout = () => {
         setShowHistoryLabel('Show history')
       } else {
         setShareLabel('Share')
-        setHideHistoryLabel('Hide chat history')
-        setShowHistoryLabel('Show chat history')
+        setHideHistoryLabel('Chatverlauf ausblenden')
+        setShowHistoryLabel('Chatverlauf anzeigen')
       }
     }
 
