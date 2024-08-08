@@ -44,6 +44,15 @@ export function parseAnswer(answer: AskResponse): ParsedAnswer {
 
   filteredCitations = enumerateCitations(filteredCitations)
 
+  filteredCitations = enumerateCitations(filteredCitations)
+
+  // Extract URLs from the citations and replace with clickable links
+  filteredCitations.forEach((citation, index) => {
+    if (citation.url) {
+      answerText = answerText.replace(`^${index + 1}^`, `[${index + 1}](${citation.url})`)
+    }
+  })
+
   return {
     citations: filteredCitations,
     markdownFormatText: answerText,

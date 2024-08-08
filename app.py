@@ -13,8 +13,8 @@ from quart import (
     send_from_directory,
     render_template,
 )
-
-from openai import AsyncAzureOpenAI
+import openai
+from openai import AsyncAzureOpenAI, AsyncStream
 from azure.identity.aio import (
     DefaultAzureCredential,
     get_bearer_token_provider
@@ -33,6 +33,11 @@ from backend.utils import (
     convert_to_pf_format,
     format_pf_non_streaming_response,
 )
+from azure.storage.blob import generate_blob_sas, BlobSasPermissions
+from datetime import datetime, timedelta
+
+from dotenv import load_dotenv
+load_dotenv()
 
 bp = Blueprint("routes", __name__, static_folder="static", template_folder="static")
 
@@ -93,6 +98,37 @@ frontend_settings = {
 # Enable Microsoft Defender for Cloud Integration
 MS_DEFENDER_ENABLED = os.environ.get("MS_DEFENDER_ENABLED", "true").lower() == "true"
 
+AZURE_STORAGE_ACCOUNT_NAME = os.environ.get("AZURE_STORAGE_ACCOUNT_NAME")
+AZURE_STORAGE_ACCOUNT_KEY = os.environ.get("AZURE_STORAGE_ACCOUNT_KEY")
+
+@bp.route('/generate_sas_url', methods=['POST'])
+async def get_sas_url():
+    data = await request.json
+    container_name = data['container_name']
+    blob_name = data['blob_name']
+
+    account_name = AZURE_STORAGE_ACCOUNT_NAME
+    account_key = AZURE_STORAGE_ACCOUNT_KEY
+
+    print(f"Account Name: {account_name}")
+    print(f"Account Key: {account_key}")
+
+    if not account_name or not account_key:
+        return jsonify({"error": "Storage account name or key is not set"}), 500
+
+    sas_token = generate_blob_sas(
+        account_name=account_name,
+        container_name=container_name,
+        blob_name=blob_name,
+        account_key=account_key,
+        permission=BlobSasPermissions(read=True),
+        expiry=datetime.utcnow() + timedelta(hours=1)
+    )
+
+    sas_url = f"https://{account_name}.blob.core.windows.net/{container_name}/{blob_name}?{sas_token}"
+    print("sas_url:", sas_url)
+    return jsonify({"sas_url": sas_url})
+    
 
 # Initialize Azure OpenAI Client
 def init_openai_client():
@@ -316,7 +352,22 @@ async def send_chat_request(request_body, request_headers):
         azure_openai_client = init_openai_client()
         raw_response = await azure_openai_client.chat.completions.with_raw_response.create(**model_args)
         response = raw_response.parse()
-        apim_request_id = raw_response.headers.get("apim-request-id") 
+        apim_request_id = raw_response.headers.get("apim-request-id")
+
+        # print("Received raw response type:", type(raw_response))
+            
+        # # Handle non-streaming response
+        # if isinstance(raw_response, openai._response.APIResponse):
+        #     # Get the underlying response content
+        #     raw_response_content = raw_response.http_response
+        #     response = await raw_response_content.aread()  # Use 'aread' to read the content asynchronously
+        #     print(response)
+        #     response_json = json.loads(response.decode('utf-8'))
+        #     print(f"Assistant: {response_json['choices'][0]['message']['content']}")
+        #     if 'context' in response_json['choices'][0]['message']['model_extra']:
+        #         context = response_json['choices'][0]['message']['model_extra']['context']['messages'][0]['content']
+        #         print(f"\nContext: {context}")
+
     except Exception as e:
         logging.exception("Exception in send_chat_request")
         raise e

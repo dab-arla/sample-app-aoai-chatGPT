@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useContext, useLayoutEffect } from 'react'
+import React, { useRef, useState, useEffect, useContext, useLayoutEffect } from 'react'
 import { CommandBarButton, IconButton, Dialog, DialogType, Stack } from '@fluentui/react'
 import { SquareRegular, ShieldLockRegular, ErrorCircleRegular } from '@fluentui/react-icons'
 
@@ -38,6 +38,7 @@ import { QuestionInput } from "../../components/QuestionInput";
 import { ChatHistoryPanel } from "../../components/ChatHistory/ChatHistoryPanel";
 import { AppStateContext } from "../../state/AppProvider";
 import { useBoolean } from "@fluentui/react-hooks";
+import IframeViewer from '../../components/IframeViewer';
 
 const enum messageStatus {
   NotRunning = 'Not Running',
@@ -63,6 +64,7 @@ const Chat = () => {
   const [clearingChat, setClearingChat] = useState<boolean>(false)
   const [hideErrorDialog, { toggle: toggleErrorDialog }] = useBoolean(true)
   const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>()
+  const [sasTokenCache, setSasTokenCache] = useState<{ [key: string]: string }>({});
 
   const errorDialogContentProps = {
     type: DialogType.close,
@@ -677,17 +679,54 @@ const Chat = () => {
     chatMessageStreamEnd.current?.scrollIntoView({ behavior: 'smooth' })
   }, [showLoadingMessage, processMessages])
 
-  const onShowCitation = (citation: Citation) => {
-    setActiveCitation(citation)
-    setIsCitationPanelOpen(true)
-  }
+  const fetchSasToken = async (url: string) => {
+    const response = await fetch('/generate_sas_url', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        container_name: url.split('/')[3], // Extract container name from URL
+        blob_name: url.split('/').pop(), // Extract blob name from URL
+      }),
+    });
+    const data = await response.json();
+    return data.sas_url;
+  };
+
+  const onShowCitation = async (citation: Citation) => {
+    if (citation.url) {
+      if (sasTokenCache[citation.url]) {
+        setActiveCitation({ ...citation, url: sasTokenCache[citation.url] });
+        setIsCitationPanelOpen(true);
+      } else {
+        try {
+          const sasUrl = await fetchSasToken(citation.url);
+          setSasTokenCache((prevCache) => ({ ...prevCache, [citation.url!]: sasUrl }));
+          setActiveCitation({ ...citation, url: sasUrl });
+          setIsCitationPanelOpen(true);
+        } catch (error) {
+        }
+      }
+    } else {
+      setActiveCitation(citation);
+      setIsCitationPanelOpen(true);
+    }
+  };
+  
+  const renderCitationContent = (citation: Citation) => {
+    if (citation.url) {      
+      return <IframeViewer url={citation.url} />;
+    }
+    return <div>{citation.content}</div>;
+  };
 
   const onShowExecResult = () => {
     setIsIntentsPanelOpen(true)
   }
 
   const onViewSource = (citation: Citation) => {
-    if (citation.url && !citation.url.includes('blob.core')) {
+    if (citation.url) {
       window.open(citation.url, '_blank')
     }
   }
@@ -730,7 +769,7 @@ const Chat = () => {
       clearingChat ||
       appStateContext?.state.chatHistoryLoadingState === ChatHistoryLoadingState.Loading
     )
-  }
+  };
 
   return (
     <div className={styles.container} role="main">
@@ -773,7 +812,7 @@ const Chat = () => {
             ) : (
               <div className={styles.chatMessageStream} style={{ marginBottom: isLoading ? '40px' : '0px' }} role="log">
                 {messages.map((answer, index) => (
-                  <>
+                  <React.Fragment key={index}>
                     {answer.role === 'user' ? (
                       <div className={styles.chatMessageUser} tabIndex={0}>
                         <div className={styles.chatMessageUserMessage}>{answer.content}</div>
@@ -789,8 +828,10 @@ const Chat = () => {
                             feedback: answer.feedback,
                             exec_results: execResults
                           }}
-                          onCitationClicked={c => onShowCitation(c)}
-                          onExectResultClicked={() => onShowExecResult()}
+                          onCitationClicked={onShowCitation}
+                          onExectResultClicked={onShowExecResult}
+                          // onCitationClicked={c => onShowCitation(c)}
+                          // onExectResultClicked={() => onShowExecResult()}
                         />
                       </div>
                     ) : answer.role === ERROR ? (
@@ -802,7 +843,7 @@ const Chat = () => {
                         <span className={styles.chatMessageErrorContent}>{answer.content}</span>
                       </div>
                     ) : null}
-                  </>
+                  </React.Fragment>
                 ))}
                 {showLoadingMessage && (
                   <>
@@ -940,22 +981,12 @@ const Chat = () => {
               <h5
                 className={styles.citationPanelTitle}
                 tabIndex={0}
-                title={
-                  activeCitation.url && !activeCitation.url.includes('blob.core')
-                    ? activeCitation.url
-                    : activeCitation.title ?? ''
-                }
-                onClick={() => onViewSource(activeCitation)}>
+                title={activeCitation.url ? activeCitation.url : activeCitation.title ?? ''}
+                onClick={() => onShowCitation(activeCitation)}>
                 {activeCitation.title}
               </h5>
               <div tabIndex={0}>
-                <ReactMarkdown
-                  linkTarget="_blank"
-                  className={styles.citationPanelContent}
-                  children={DOMPurify.sanitize(activeCitation.content, { ALLOWED_TAGS: XSSAllowTags })}
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw]}
-                />
+              {renderCitationContent(activeCitation)}
               </div>
             </Stack.Item>
           )}

@@ -70,7 +70,9 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
   const createCitationFilepath = (citation: Citation, index: number, truncate: boolean = false) => {
     let citationFilename = ''
 
-    if (citation.filepath) {
+    if (citation.url) {
+      citationFilename = citation.url;
+    } else if (citation.filepath) {
       const part_i = citation.part_index ?? (citation.chunk_id ? parseInt(citation.chunk_id) + 1 : '')
       if (truncate && citation.filepath.length > filePathTruncationLimit) {
         const citationLength = citation.filepath.length
@@ -356,16 +358,16 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
             {parsedAnswer.citations.map((citation, idx) => {
               return (
                 <span
-                  title={createCitationFilepath(citation, ++idx)}
+                  title={citation.url || createCitationFilepath(citation, ++idx)}
                   tabIndex={0}
                   role="link"
                   key={idx}
                   onClick={() => onCitationClicked(citation)}
                   onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? onCitationClicked(citation) : null)}
                   className={styles.citationContainer}
-                  aria-label={createCitationFilepath(citation, idx)}>
+                  aria-label={citation.url || createCitationFilepath(citation, idx)}>
                   <div className={styles.citation}>{idx}</div>
-                  {createCitationFilepath(citation, idx, true)}
+                  {citation.url || createCitationFilepath(citation, idx, true)}
                 </span>
               )
             })}

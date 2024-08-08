@@ -243,7 +243,8 @@
 }
 
 .citationPanel {
-  display: flex;
+  /*display: flex;*/
+
   flex-direction: column;
   align-items: flex-start;
   padding: 16px 16px;
@@ -256,10 +257,12 @@
   flex: auto;
   order: 0;
   align-self: stretch;
-  flex-grow: 0.3;
+  flex-grow: 1; /* Changed from 0.3 to 1 */
   max-width: 30%;
-  overflow-y: scroll;
+  overflow-y: hidden; /* Updated to hidden */
   max-height: calc(100vh - 100px);
+  height: 100vh; /* Added */
+  width: 100%; /* Added */
 }
 
 .citationPanelHeaderContainer {
@@ -312,8 +315,36 @@
   flex: none;
   order: 1;
   align-self: stretch;
-  flex-grow: 0;
+  flex-grow: 1;
+  height: 100%; /* Ensure content takes full height */
 }
+
+.documentViewer {
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Hide overflow */
+  display: flex;
+}
+
+.documentViewer > .docViewer__container {
+  flex-grow: 1;
+  overflow: hidden;
+  height: 100%; /* Ensure document viewer container takes full height */
+}
+
+/* src/pages/chat/chat.module.css */
+.iframeViewer {
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Hide overflow */
+  display: flex;
+}
+
+.iframeViewer > .iframeViewer__container {
+  flex-grow: 1;
+  overflow: hidden;
+}
+
 
 .exectResultList {
   display: flex;
@@ -390,6 +421,6 @@ a {
   }
 
   .citationPanel {
-    max-width: 100%;
+    max-width: 70%;
   }
 }
