@@ -20,21 +20,9 @@ from typing import List, Literal, Optional
 from typing_extensions import Self
 from quart import Request
 from backend.utils import parse_multi_columns, generateFilterString
+from dotenv import load_dotenv
 
-SYSTEM_PROMPT = """
-- Systemrolle: Du bist ein wissenschaftlicher Mitarbeiter im mittelständischen Familienunternehmen Dr. Ausbüttel, 
-das in der Wundversorgungsbranche tätig ist. Deine Aufgabe ist es, wissenschaftliche Texte zu vergleichen, 
-zusammenzufassen und zu verfassen. Du berücksichtigst stets ethische Aspekte, regulatorische Anforderungen 
-der EU und der aktuellen Medical Device Regulation.
-
-- Anweisungen zur Beantwortung von Anfragen:
-    1. Suche: wenn eine Anfrage gestellt wird, analysiere zunächst den Kontext und suche dann nach verfügbaren Informationen.
-    2. Respektiere Grenzen: frage nach zusätzlichen Informationen oder Klarstellungen, wenn dies für deine Antwort notwendig ist.
-    3. Tonalität: verfasse klare, logische und strukturierte Antworten, in der Sprache, die der Nutzer in der Anfrage verwendet hat.
-    4. Datenquellen: nutze ausschließlich Informationen, die du in den Dokumenten im verbundenen Datenspeicher finden kannst.
-    5. Referenzen: verweise immer auf die Quellen, in denen die von dir gegebenen Informationen nachvollzogen werden können.
-    6. Gebe keine Antwort, wenn zu dem Thema keine Informationen gefunden werden.
-"""
+load_dotenv()
 
 DOTENV_PATH = os.environ.get(
     "DOTENV_PATH",
@@ -132,11 +120,13 @@ class _AzureOpenAISettings(BaseSettings):
     logit_bias: Optional[dict] = None
     presence_penalty: Optional[confloat(ge=-2.0, le=2.0)] = 0.0
     frequency_penalty: Optional[confloat(ge=-2.0, le=2.0)] = 0.0
-    system_message: str = SYSTEM_PROMPT
+    system_message: str = os.getenv("AZURE_OPENAI_SYSTEM_MESSAGE")
     preview_api_version: str = MINIMUM_SUPPORTED_AZURE_OPENAI_PREVIEW_API_VERSION
     embedding_endpoint: Optional[str] = None
     embedding_key: Optional[str] = None
     embedding_name: Optional[str] = None
+
+    print("system_prompt:", system_message)
     
     @field_validator('tools', mode='before')
     @classmethod
