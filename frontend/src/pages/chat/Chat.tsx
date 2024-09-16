@@ -64,7 +64,7 @@ const Chat = () => {
   const [clearingChat, setClearingChat] = useState<boolean>(false)
   const [hideErrorDialog, { toggle: toggleErrorDialog }] = useBoolean(true)
   const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>()
-  const [sasTokenCache, setSasTokenCache] = useState<{ [key: string]: string }>({});
+  const [sasTokenCache, setSasTokenCache] = useState<{ [key: string]: { sas_url: string; extracted_url?: string } | string }>({});
 
   const errorDialogContentProps = {
     type: DialogType.close,
@@ -679,7 +679,7 @@ const Chat = () => {
     chatMessageStreamEnd.current?.scrollIntoView({ behavior: 'smooth' })
   }, [showLoadingMessage, processMessages])
 
-  const fetchSasToken = async (url: string) => {
+  const fetchSasToken = async (url: string, content: string) => {
     const response = await fetch('/generate_sas_url', {
       method: 'POST',
       headers: {
@@ -688,36 +688,82 @@ const Chat = () => {
       body: JSON.stringify({
         container_name: url.split('/')[3], // Extract container name from URL
         blob_name: url.split('/').pop(), // Extract blob name from URL
+        content: content                   // Pass the content as well
       }),
     });
     const data = await response.json();
-    return data.sas_url;
+    return {
+      sas_url: data.sas_url
+    };
   };
 
   const onShowCitation = async (citation: Citation) => {
+    // Check if citation.title exists and contains a valid URL
+    if (citation.title) {
+      let citationTitleUrl = citation.title;
+  
+      // Clean up the title URL string (removing brackets)
+      if (typeof citationTitleUrl === 'string') {
+        citationTitleUrl = citationTitleUrl.replace(/[\[\]"]+/g, ''); // Remove square brackets and double quotes
+      }
+  
+      if (citationTitleUrl.startsWith("http")) {
+        // If the title contains a URL, we display that URL as a link in the footer and don't open the sidebar
+        console.log("Citation title contains a URL:", citationTitleUrl);
+        return; // Do not open the sidebar for citations with title URLs
+      }
+    }
+  
+    // Proceed to open the document using the SAS URL
     if (citation.url) {
-      if (sasTokenCache[citation.url]) {
-        setActiveCitation({ ...citation, url: sasTokenCache[citation.url] });
+      try {
+        // Fetch the SAS token and use the extracted URL to display the document
+        const { sas_url } = await fetchSasToken(citation.url, citation.content);
+
+        // Print the SAS URL used to open the document
+        console.log("Opening document with SAS URL:", sas_url);
+  
+        // Cache the SAS URL for future use (optional)
+        setSasTokenCache((prevCache) => ({ ...prevCache, [citation.url!]: sas_url }));
+  
+        // Open the sidebar and display the document using the SAS URL in IframeViewer
+        setActiveCitation({ ...citation, url: sas_url });
         setIsCitationPanelOpen(true);
-      } else {
-        try {
-          const sasUrl = await fetchSasToken(citation.url);
-          setSasTokenCache((prevCache) => ({ ...prevCache, [citation.url!]: sasUrl }));
-          setActiveCitation({ ...citation, url: sasUrl });
-          setIsCitationPanelOpen(true);
-        } catch (error) {
-        }
+      } catch (error) {
+        console.error("Error fetching SAS token:", error);
       }
     } else {
+      // If no citation.url, just set the citation and open the sidebar (fallback)
       setActiveCitation(citation);
       setIsCitationPanelOpen(true);
     }
   };
-  
+
   const renderCitationContent = (citation: Citation) => {
-    if (citation.url) {      
+    // Check if citation.title is not empty
+    if (citation.title && citation.title.length > 0) {
+      // Remove the surrounding brackets [] if the title is stored as a string
+      let titleUrl = citation.title;
+  
+      // Check if it's a string with brackets and clean it up
+      if (typeof titleUrl === 'string') {
+        titleUrl = titleUrl.replace(/[\[\]"]+/g, ''); // Remove square brackets and double quotes
+      }
+  
+      console.log('Title URL found:', titleUrl); // Log the cleaned-up title URL
+      return (
+        <div>
+          <a href={titleUrl} target="_blank" rel="noopener noreferrer">{titleUrl}</a>
+        </div>
+      );
+    } 
+    // If citation.url exists but title is empty or not usable, fallback to citation.url
+    else if (citation.url) {
+      console.log('Using citation.url:', citation.url); // Log the fallback URL
       return <IframeViewer url={citation.url} />;
     }
+    
+    // Fallback to displaying raw content if no URL or title
     return <div>{citation.content}</div>;
   };
 
@@ -970,7 +1016,7 @@ const Chat = () => {
                 horizontalAlign="space-between"
                 verticalAlign="center">
                 <span aria-label="Citations" className={styles.citationPanelHeader}>
-                  Citations
+                  Document Viewer
                 </span>
                 <IconButton
                   iconProps={{ iconName: 'Cancel' }}
@@ -979,14 +1025,12 @@ const Chat = () => {
                 />
               </Stack>
               <h5
-                className={styles.citationPanelTitle}
-                tabIndex={0}
-                title={activeCitation.url ? activeCitation.url : activeCitation.title ?? ''}
-                onClick={() => onShowCitation(activeCitation)}>
-                {activeCitation.title}
+                className={styles.citationPanelTitle} tabIndex={0}>
+                {activeCitation.filepath ? activeCitation.filepath : activeCitation.url}
               </h5>
               <div tabIndex={0}>
-              {renderCitationContent(activeCitation)}
+                {/* Render the document using IframeViewer and SAS URL */}
+                {activeCitation.url && <IframeViewer url={activeCitation.url} />}
               </div>
             </Stack.Item>
           )}

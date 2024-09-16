@@ -5,9 +5,10 @@
   padding: 8.1285px;
   gap: 5.42px;
   background: #ffffff;
-  box-shadow:
+  box-shadow: none;
+  /* box-shadow:
     0px 1px 2px rgba(0, 0, 0, 0.14),
-    0px 0px 2px rgba(0, 0, 0, 0.12);
+    0px 0px 2px rgba(0, 0, 0, 0.12); */
   border-radius: 5.419px;
 }
 
@@ -184,6 +185,34 @@ sup {
   line-height: 10px;
 }
 
+/* Tooltip CSS */
+.citationLink {
+  position: relative;
+  cursor: pointer;
+  color: blue;
+  text-decoration: underline;
+}
+
+.citationLink:hover::after {
+  content: attr(title); /* Display the title attribute content as a tooltip */
+  position: absolute;
+  background-color: #f9f9f9;
+  color: #333;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  white-space: pre-wrap; /* Preserve white spaces and line breaks */
+  z-index: 10;
+  top: 20px; /* Position the tooltip below the text */
+  left: 0;
+  width: max-content; /* Adjust width to fit content */
+  max-width: 300px; /* Prevent it from getting too wide */
+  box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.1);
+}
+
+.citationLink:hover {
+  text-decoration: none; /* Remove underline on hover */
+}
 @media (max-width: 480px) {
   .answerFooter {
     flex-direction: column-reverse;

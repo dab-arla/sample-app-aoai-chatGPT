@@ -1,6 +1,7 @@
 import copy
 import json
 import os
+import re
 import logging
 import uuid
 import httpx
@@ -34,7 +35,7 @@ from backend.utils import (
     format_pf_non_streaming_response,
 )
 from azure.storage.blob import generate_blob_sas, BlobSasPermissions
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -70,8 +71,12 @@ async def assets(path):
 
 # Debug settings
 DEBUG = os.environ.get("DEBUG", "false")
-if DEBUG.lower() == "true":
+# Set the logging level based on the DEBUG setting
+if DEBUG:
     logging.basicConfig(level=logging.DEBUG)
+    logging.debug("Debugging is enabled")
+else:
+    logging.basicConfig(level=logging.INFO)
 
 USER_AGENT = "GitHubSampleWebApp/AsyncAzureOpenAI/1.0.0"
 
@@ -101,17 +106,22 @@ MS_DEFENDER_ENABLED = os.environ.get("MS_DEFENDER_ENABLED", "true").lower() == "
 AZURE_STORAGE_ACCOUNT_NAME = os.environ.get("AZURE_STORAGE_ACCOUNT_NAME")
 AZURE_STORAGE_ACCOUNT_KEY = os.environ.get("AZURE_STORAGE_ACCOUNT_KEY")
 
+
 @bp.route('/generate_sas_url', methods=['POST'])
 async def get_sas_url():
     data = await request.json
+    # print("data:", data)
     container_name = data['container_name']
     blob_name = data['blob_name']
+    # content = data.get('content', '')
+    # print("content:", content)
 
     account_name = AZURE_STORAGE_ACCOUNT_NAME
     account_key = AZURE_STORAGE_ACCOUNT_KEY
 
-    print(f"Account Name: {account_name}")
-    print(f"Account Key: {account_key}")
+    # print(f"Account Name: {account_name}")
+    # print(f"Account Key: {account_key}")
+    
 
     if not account_name or not account_key:
         return jsonify({"error": "Storage account name or key is not set"}), 500
@@ -122,12 +132,15 @@ async def get_sas_url():
         blob_name=blob_name,
         account_key=account_key,
         permission=BlobSasPermissions(read=True),
-        expiry=datetime.utcnow() + timedelta(hours=1)
+        expiry=datetime.now(timezone.utc) + timedelta(hours=1)
     )
 
+    # print("sas_token:", sas_token)
+    # print("blob_name:", blob_name)
     sas_url = f"https://{account_name}.blob.core.windows.net/{container_name}/{blob_name}?{sas_token}"
-    print("sas_url:", sas_url)
-    return jsonify({"sas_url": sas_url})
+    # print("sas_url:", sas_url)
+
+    return jsonify({"sas_url": sas_url })
     
 
 # Initialize Azure OpenAI Client
@@ -390,7 +403,6 @@ async def complete_chat_request(request_body, request_headers):
         history_metadata = request_body.get("history_metadata", {})
         return format_non_streaming_response(response, history_metadata, apim_request_id)
 
-
 async def stream_chat_request(request_body, request_headers):
     response, apim_request_id = await send_chat_request(request_body, request_headers)
     history_metadata = request_body.get("history_metadata", {})
@@ -398,7 +410,6 @@ async def stream_chat_request(request_body, request_headers):
     async def generate():
         async for completionChunk in response:
             yield format_stream_response(completionChunk, history_metadata, apim_request_id)
-
     return generate()
 
 

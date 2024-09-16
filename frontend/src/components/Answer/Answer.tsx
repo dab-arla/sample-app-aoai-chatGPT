@@ -12,6 +12,7 @@ import Plot from 'react-plotly.js'
 import { AskResponse, Citation, Feedback, historyMessageFeedback } from '../../api'
 import { XSSAllowTags, XSSAllowAttributes } from '../../constants/sanatizeAllowables'
 import { AppStateContext } from '../../state/AppProvider'
+import rehypeRaw from 'rehype-raw'; // Import rehype-raw to process raw HTML
 
 import { parseAnswer } from './AnswerParser'
 
@@ -32,6 +33,7 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
     return Feedback.Neutral
   }
 
+  const [citations, setCitations] = useState<Citation[]>([]);
   const [isRefAccordionOpen, { toggle: toggleIsRefAccordionOpen }] = useBoolean(false)
   const filePathTruncationLimit = 50
 
@@ -50,7 +52,7 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
     setChevronIsExpanded(!chevronIsExpanded)
     toggleIsRefAccordionOpen()
   }
-
+ 
   useEffect(() => {
     setChevronIsExpanded(isRefAccordionOpen)
   }, [isRefAccordionOpen])
@@ -70,9 +72,13 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
   const createCitationFilepath = (citation: Citation, index: number, truncate: boolean = false) => {
     let citationFilename = ''
 
-    if (citation.url) {
-      citationFilename = citation.url;
-    } else if (citation.filepath) {
+    // First, check if there's a title, and remove square brackets if present
+    if (citation.title && citation.title.length > 0) {
+      citationFilename = citation.title.replace(/[\[\]"]+/g, ''); // Remove square brackets and double quotes
+    }
+    
+    // Fallback to filepath if no title is available
+    if (citation.filepath) {
       const part_i = citation.part_index ?? (citation.chunk_id ? parseInt(citation.chunk_id) + 1 : '')
       if (truncate && citation.filepath.length > filePathTruncationLimit) {
         const citationLength = citation.filepath.length
@@ -229,21 +235,33 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
     )
   }
 
+  // Function to render the citations with hover effect
+  const renderCitationsWithHover = (text: string) => {
+    return text.replace(/\[(\d+)\]/g, (match, p1) => {
+      const index = parseInt(p1);
+      const citation = parsedAnswer.citations[index - 1];
+
+      return citation
+        ? `<span class="${styles.citationLink}" data-citation-index="${index}">${match}
+           <div class="${styles.tooltip}">${citation.content}</div></span>`
+        : match;
+    });
+  };
+
   const components = {
-    code({ node, ...props }: { node: any;[key: string]: any }) {
-      let language
-      if (props.className) {
-        const match = props.className.match(/language-(\w+)/)
-        language = match ? match[1] : undefined
-      }
-      const codeString = node.children[0].value ?? ''
-      return (
-        <SyntaxHighlighter style={nord} language={language} PreTag="div" {...props}>
-          {codeString}
-        </SyntaxHighlighter>
-      )
-    }
-  }
+    a: ({ node, href, children, ...props }: { node: unknown; href?: string; children: any }) => (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: 'blue', textDecoration: 'underline', cursor: 'pointer' }}
+        {...props}
+      >
+        {children}
+      </a>
+    ),
+  };
+  
   return (
     <>
       <Stack className={styles.answerContainer} tabIndex={0}>
@@ -253,9 +271,13 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
               <ReactMarkdown
                 linkTarget="_blank"
                 remarkPlugins={[remarkGfm, supersub]}
+                rehypePlugins={[rehypeRaw]}  // This will allow raw HTML to be processed
                 children={
                   SANITIZE_ANSWER
-                    ? DOMPurify.sanitize(parsedAnswer.markdownFormatText, { ALLOWED_TAGS: XSSAllowTags, ALLOWED_ATTR: XSSAllowAttributes })
+                    ? DOMPurify.sanitize(parsedAnswer.markdownFormatText, {
+                        ALLOWED_TAGS: [...XSSAllowTags, 'span'],
+                        ALLOWED_ATTR: [...XSSAllowAttributes, 'data-citation-index', 'title'],
+                      })
                     : parsedAnswer.markdownFormatText
                 }
                 className={styles.answerText}
@@ -268,10 +290,10 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
                   <ThumbLike20Filled
                     aria-hidden="false"
                     aria-label="Like this response"
-                    onClick={() => onLikeResponseClicked()}
+                    onClick={onLikeResponseClicked}
                     style={
                       feedbackState === Feedback.Positive ||
-                        appStateContext?.state.feedbackState[answer.message_id] === Feedback.Positive
+                      appStateContext?.state.feedbackState[answer.message_id] === Feedback.Positive
                         ? { color: 'darkgreen', cursor: 'pointer' }
                         : { color: 'slategray', cursor: 'pointer' }
                     }
@@ -279,11 +301,11 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
                   <ThumbDislike20Filled
                     aria-hidden="false"
                     aria-label="Dislike this response"
-                    onClick={() => onDislikeResponseClicked()}
+                    onClick={onDislikeResponseClicked}
                     style={
                       feedbackState !== Feedback.Positive &&
-                        feedbackState !== Feedback.Neutral &&
-                        feedbackState !== undefined
+                      feedbackState !== Feedback.Neutral &&
+                      feedbackState !== undefined
                         ? { color: 'darkred', cursor: 'pointer' }
                         : { color: 'slategray', cursor: 'pointer' }
                     }
@@ -302,7 +324,9 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
         )}
         <Stack horizontal className={styles.answerFooter}>
           {!!parsedAnswer.citations.length && (
-            <Stack.Item onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? toggleIsRefAccordionOpen() : null)}>
+            <Stack.Item
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ' ? toggleIsRefAccordionOpen() : null)}
+            >
               <Stack style={{ width: '100%' }}>
                 <Stack horizontal horizontalAlign="start" verticalAlign="center">
                   <Text
@@ -310,11 +334,10 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
                     onClick={toggleIsRefAccordionOpen}
                     aria-label="Open references"
                     tabIndex={0}
-                    role="button">
+                    role="button"
+                  >
                     <span>
-                      {parsedAnswer.citations.length > 1
-                        ? parsedAnswer.citations.length + ' references'
-                        : '1 reference'}
+                      {parsedAnswer.citations.length > 1 ? parsedAnswer.citations.length + ' references' : '1 reference'}
                     </span>
                   </Text>
                   <FontIcon
@@ -330,7 +353,9 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
             <span className={styles.answerDisclaimer}>Von KI generierte Inhalte können fehlerhaft sein</span>
           </Stack.Item>
           {!!answer.exec_results?.length && (
-            <Stack.Item onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? toggleIsRefAccordionOpen() : null)}>
+            <Stack.Item
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ' ? toggleIsRefAccordionOpen() : null)}
+            >
               <Stack style={{ width: '100%' }}>
                 <Stack horizontal horizontalAlign="start" verticalAlign="center">
                   <Text
@@ -338,10 +363,9 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
                     onClick={() => onExectResultClicked()}
                     aria-label="Open Intents"
                     tabIndex={0}
-                    role="button">
-                    <span>
-                      Show Intents
-                    </span>
+                    role="button"
+                  >
+                    <span>Show Intents</span>
                   </Text>
                   <FontIcon
                     className={styles.accordionIcon}
@@ -356,28 +380,47 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
         {chevronIsExpanded && (
           <div className={styles.citationWrapper}>
             {parsedAnswer.citations.map((citation, idx) => {
-              return (
-                <span
-                  title={citation.url || createCitationFilepath(citation, ++idx)}
-                  tabIndex={0}
-                  role="link"
-                  key={idx}
-                  onClick={() => onCitationClicked(citation)}
-                  onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? onCitationClicked(citation) : null)}
-                  className={styles.citationContainer}
-                  aria-label={citation.url || createCitationFilepath(citation, idx)}>
-                  <div className={styles.citation}>{idx}</div>
-                  {citation.url || createCitationFilepath(citation, idx, true)}
-                </span>
-              )
-            })}
-          </div>
-        )}
+              // Check if citation.title contains a valid URL
+              let citationTitleUrl = '';
+              if (citation.title) { // Check if title exists and is not null
+                try {
+                  const parsedTitle = JSON.parse(citation.title);
+                  if (Array.isArray(parsedTitle) && parsedTitle.length > 0 && parsedTitle[0].startsWith("http")) {
+                    citationTitleUrl = parsedTitle[0];
+                  }
+                } catch (e) {
+                  citationTitleUrl = '';
+                }
+              } 
+                
+                return (
+                  <span
+                    title={citationTitleUrl ? citationTitleUrl : createCitationFilepath(citation, ++idx)}
+                    tabIndex={0}
+                    role="link"
+                    key={idx}
+                    onClick={() => onCitationClicked(citation)}
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ' ? onCitationClicked(citation) : null)}
+                    className={styles.citationContainer}
+                    aria-label={citationTitleUrl ? citationTitleUrl : createCitationFilepath(citation, idx)}
+                  >
+                    <div className={styles.citation}>{idx}</div>
+                    {citationTitleUrl ? (
+                      <a href={citationTitleUrl} target="_blank" rel="noopener noreferrer">{citationTitleUrl}</a>
+                    ) : (
+                      createCitationFilepath(citation, idx, true)
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
       </Stack>
       <Dialog
         onDismiss={() => {
-          resetFeedbackDialog()
-          setFeedbackState(Feedback.Neutral)
+          resetFeedbackDialog();
+          setFeedbackState(Feedback.Neutral);
         }}
         hidden={!isFeedbackDialogOpen}
         styles={{
@@ -390,28 +433,38 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
                   boxShadow: '0px 14px 28.8px rgba(0, 0, 0, 0.24), 0px 0px 8px rgba(0, 0, 0, 0.2)',
                   borderRadius: '8px',
                   maxHeight: '600px',
-                  minHeight: '100px'
-                }
-              }
-            }
-          ]
+                  minHeight: '100px',
+                },
+              },
+            },
+          ],
         }}
         dialogContentProps={{
           title: 'Feedback einreichen',
-          showCloseButton: true
-        }}>
+          showCloseButton: true,
+        }}
+      >
         <Stack tokens={{ childrenGap: 4 }}>
           <div>Dein Feedback hilft uns besser zu werden.</div>
 
-          {!showReportInappropriateFeedback ? <UnhelpfulFeedbackContent /> : <ReportInappropriateFeedbackContent />}
+          {!showReportInappropriateFeedback ? (
+            <UnhelpfulFeedbackContent />
+          ) : (
+            <ReportInappropriateFeedbackContent />
+          )}
 
-          <div>Durch Klicken auf „Absenden“ wird dein Feedback an das Entwicklerteam übermittelt.</div>
+          <div>
+            Durch Klicken auf „Absenden“ wird dein Feedback an das Entwicklerteam übermittelt.
+          </div>
 
-          <DefaultButton disabled={negativeFeedbackList.length < 1} onClick={onSubmitNegativeFeedback}>
+          <DefaultButton
+            disabled={negativeFeedbackList.length < 1}
+            onClick={onSubmitNegativeFeedback}
+          >
             Absenden
           </DefaultButton>
         </Stack>
       </Dialog>
     </>
-  )
-}
+  );
+  };  

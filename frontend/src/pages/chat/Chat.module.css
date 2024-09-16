@@ -84,6 +84,37 @@
   margin-top: 24px;
 }
 
+/* Hide scrollbar for Webkit browsers (Chrome, Safari) */
+.chatMessageStream::-webkit-scrollbar {
+  width: 8px; /* Width of the scrollbar */
+  /*display: none; /* Hides the scrollbar */
+}
+
+.chatMessageStream::-webkit-scrollbar-track {
+  background: #f1f1f1; /* Track background color */
+  border-radius: 10px; /* Rounded corners for the scrollbar track */
+}
+
+.chatMessageStream::-webkit-scrollbar-thumb {
+  background: #888; /* Color of the scrollbar thumb */
+  border-radius: 10px; /* Rounded corners for the scrollbar thumb */
+}
+
+.chatMessageStream::-webkit-scrollbar-thumb:hover {
+  background: #555; /* Color of the scrollbar thumb on hover */
+}
+
+
+/* Hide scrollbar for Firefox */
+/*.chatMessageStream {
+  scrollbar-width: none; /* Hides the scrollbar 
+}
+
+/* Hide scrollbar for Internet Explorer and Edge */
+/*.chatMessageStream {
+  -ms-overflow-style: none; /* Hides scrollbar for IE and Edge }
+*/
+
 .chatMessageUser {
   display: flex;
   justify-content: flex-end;
